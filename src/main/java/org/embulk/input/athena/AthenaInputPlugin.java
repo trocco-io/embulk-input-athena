@@ -136,7 +136,7 @@ public class AthenaInputPlugin implements InputPlugin
                             pageBuilder.setTimestamp(column, Timestamp.ofEpochMilli(t.getTime()));
                         }
                         catch (SQLException e) {
-                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -147,7 +147,7 @@ public class AthenaInputPlugin implements InputPlugin
                             pageBuilder.setString(column, resultSet.getString(column.getName()));
                         }
                         catch (SQLException e) {
-                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -158,7 +158,7 @@ public class AthenaInputPlugin implements InputPlugin
                             pageBuilder.setLong(column, resultSet.getLong(column.getName()));
                         }
                         catch (SQLException e) {
-                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -169,7 +169,7 @@ public class AthenaInputPlugin implements InputPlugin
                             pageBuilder.setDouble(column, resultSet.getDouble(column.getName()));
                         }
                         catch (SQLException e) {
-                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -180,7 +180,7 @@ public class AthenaInputPlugin implements InputPlugin
                             pageBuilder.setBoolean(column, resultSet.getBoolean(column.getName()));
                         }
                         catch (SQLException e) {
-                            e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -200,7 +200,7 @@ public class AthenaInputPlugin implements InputPlugin
             connection.close();
         }
         catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
         finally {
             try {
