@@ -138,7 +138,12 @@ public class AthenaInputPlugin implements InputPlugin
                     {
                         try {
                             java.sql.Timestamp t = resultSet.getTimestamp(column.getName());
-                            pageBuilder.setTimestamp(column, Timestamp.ofEpochMilli(t.getTime()));
+                            if (resultSet.wasNull() && !nullToZero){
+                                pageBuilder.setNull(column);
+                            }
+                            else {
+                                pageBuilder.setTimestamp(column, Timestamp.ofEpochMilli(t.getTime()));
+                            }
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
