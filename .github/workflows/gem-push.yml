@@ -23,5 +23,5 @@ jobs:
         uses: trocco-io/push-gem-to-gpr-action@v1
         with:
           language: java
-          gem-path: "./build/gems/*.gem"
+          gem-path: "./pkg/*.gem"
           github-token: "${{ secrets.GITHUB_TOKEN }}"
