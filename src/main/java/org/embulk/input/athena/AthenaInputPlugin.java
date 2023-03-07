@@ -82,6 +82,10 @@ public class AthenaInputPlugin implements InputPlugin
         @ConfigDefault("{}")
         public ToStringMap getOptions();
 
+        @Config("null_to_zero")
+        @ConfigDefault("false")
+        public boolean getNullToZero();
+
         @ConfigInject
         BufferAllocator getBufferAllocator();
     }
@@ -124,6 +128,7 @@ public class AthenaInputPlugin implements InputPlugin
             connection = getAthenaConnection(task);
             statement = connection.createStatement();
             ResultSet resultSet = statement.executeQuery(task.getQuery());
+            boolean nullToZero = task.getNullToZero();
 
             while (resultSet.next()) {
                 schema.visitColumns(new ColumnVisitor()
@@ -133,10 +138,16 @@ public class AthenaInputPlugin implements InputPlugin
                     {
                         try {
                             java.sql.Timestamp t = resultSet.getTimestamp(column.getName());
-                            pageBuilder.setTimestamp(column, Timestamp.ofEpochMilli(t.getTime()));
+                            if (resultSet.wasNull() && !nullToZero){
+                                pageBuilder.setNull(column);
+                            }
+                            else {
+                                pageBuilder.setTimestamp(column, Timestamp.ofEpochMilli(t.getTime()));
+                            }
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -148,6 +159,7 @@ public class AthenaInputPlugin implements InputPlugin
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -155,10 +167,17 @@ public class AthenaInputPlugin implements InputPlugin
                     public void longColumn(Column column)
                     {
                         try {
-                            pageBuilder.setLong(column, resultSet.getLong(column.getName()));
+                            long ret = resultSet.getLong(column.getName());
+                            if (resultSet.wasNull() && !nullToZero){
+                                pageBuilder.setNull(column);
+                            }
+                            else {
+                                pageBuilder.setLong(column, ret);
+                            }
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -166,10 +185,17 @@ public class AthenaInputPlugin implements InputPlugin
                     public void doubleColumn(Column column)
                     {
                         try {
-                            pageBuilder.setDouble(column, resultSet.getDouble(column.getName()));
+                            double ret = resultSet.getDouble(column.getName());
+                            if (resultSet.wasNull() && !nullToZero){
+                                pageBuilder.setNull(column);
+                            }
+                            else {
+                                pageBuilder.setDouble(column, ret);
+                            }
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -177,10 +203,17 @@ public class AthenaInputPlugin implements InputPlugin
                     public void booleanColumn(Column column)
                     {
                         try {
-                            pageBuilder.setBoolean(column, resultSet.getBoolean(column.getName()));
+                            boolean ret = resultSet.getBoolean(column.getName());
+                            if (resultSet.wasNull() && !nullToZero){
+                                pageBuilder.setNull(column);
+                            }
+                            else {
+                                pageBuilder.setBoolean(column, ret);
+                            }
                         }
                         catch (SQLException e) {
                             e.printStackTrace();
+                            throw new RuntimeException(e);
                         }
                     }
 
@@ -201,6 +234,7 @@ public class AthenaInputPlugin implements InputPlugin
         }
         catch (Exception e) {
             e.printStackTrace();
+            throw new RuntimeException(e);
         }
         finally {
             try {
@@ -230,11 +264,12 @@ public class AthenaInputPlugin implements InputPlugin
 
     protected Connection getAthenaConnection(PluginTask task) throws ClassNotFoundException, SQLException
     {
-        loadDriver("com.amazonaws.athena.jdbc.AthenaDriver", task.getDriverPath());
+        loadDriver("com.simba.athena.jdbc.Driver", task.getDriverPath());
         Properties properties = new Properties();
         properties.put("s3_staging_dir", task.getS3StagingDir());
         properties.put("user", task.getAccessKey());
         properties.put("password", task.getSecretKey());
+        properties.put("schema", task.getDatabase());
         properties.putAll(task.getOptions());
 
         return DriverManager.getConnection(task.getAthenaUrl(), properties);
