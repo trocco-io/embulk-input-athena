@@ -45,14 +45,6 @@ task downloadFile(type: Download) {
     onlyIfModified true
 }
 
-task classpath(type: Copy, dependsOn: ["downloadFile", "jar"]) {
-    doFirst { file("classpath").deleteDir() }
-    from (configurations.runtime - configurations.provided + files(jar.archivePath))
-    from ("build/AthenaJDBC41.jar")
-    into "classpath"
-}
-clean { delete "classpath" }
-
 checkstyle {
     configFile = file("${project.rootDir}/config/checkstyle/checkstyle.xml")
     toolVersion = '6.14.1'
@@ -78,6 +70,8 @@ embulkPlugin {
 }
 
 gem {
+    dependsOn downloadFile
+
     from("LICENSE")
     authors = [ "shinji19" ]
     summary = "Athena input plugin for Embulk"
