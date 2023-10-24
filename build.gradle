@@ -29,8 +29,11 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    compile  "org.embulk:embulk-core:0.8.39"
-    provided "org.embulk:embulk-core:0.8.39"
+    compileOnly "org.embulk:embulk-api:0.10.36"
+    compileOnly "org.embulk:embulk-spi:0.10.36"
+
+    compile("org.embulk:embulk-util-config:0.3.2")
+
     // TODO: maven...
     compile files ('build/AthenaJDBC41.jar')
     compile group: 'com.amazonaws', name: 'aws-java-sdk', version: '1.11.301'

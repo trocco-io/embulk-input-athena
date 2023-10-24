@@ -1,6 +1,9 @@
 package org.embulk.input.athena;
 
-import com.google.common.base.Optional;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.URLClassLoader;
+import java.util.Optional;
 
 import java.io.File;
 import java.io.FileFilter;
@@ -17,17 +20,16 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
 
-import org.embulk.config.Config;
-import org.embulk.config.ConfigDefault;
+import org.embulk.util.config.ConfigMapper;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
-import org.embulk.config.ConfigInject;
 import org.embulk.config.ConfigSource;
-import org.embulk.config.Task;
+import org.embulk.util.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.input.jdbc.ToStringMap;
-import org.embulk.plugin.PluginClassLoader;
 import org.embulk.spi.BufferAllocator;
 import org.embulk.spi.Column;
 import org.embulk.spi.ColumnVisitor;
@@ -36,13 +38,16 @@ import org.embulk.spi.InputPlugin;
 import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
-import org.embulk.spi.SchemaConfig;
+import org.embulk.util.config.units.SchemaConfig;
 import org.embulk.spi.time.Timestamp;
+import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.TaskMapper;
 import org.slf4j.Logger;
 
 public class AthenaInputPlugin implements InputPlugin
 {
-    protected final Logger logger = Exec.getLogger(getClass());
+    protected final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
 
     public interface PluginTask extends Task
     {
@@ -86,26 +91,25 @@ public class AthenaInputPlugin implements InputPlugin
         @ConfigDefault("false")
         public boolean getNullToZero();
 
-        @ConfigInject
-        BufferAllocator getBufferAllocator();
     }
 
     @Override
     public ConfigDiff transaction(ConfigSource config, InputPlugin.Control control)
     {
-        PluginTask task = config.loadConfig(PluginTask.class);
+        final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
+        final PluginTask task = configMapper.map(config, PluginTask.class);
 
         Schema schema = task.getColumns().toSchema();
         int taskCount = 1; // number of run() method calls
 
-        return resume(task.dump(), schema, taskCount, control);
+        return resume(task.toTaskSource(), schema, taskCount, control);
     }
 
     @Override
     public ConfigDiff resume(TaskSource taskSource, Schema schema, int taskCount, InputPlugin.Control control)
     {
         control.run(taskSource, schema, taskCount);
-        return Exec.newConfigDiff();
+        return CONFIG_MAPPER_FACTORY.newConfigDiff();
     }
 
     @Override
@@ -116,8 +120,10 @@ public class AthenaInputPlugin implements InputPlugin
     @Override
     public TaskReport run(TaskSource taskSource, Schema schema, int taskIndex, PageOutput output)
     {
-        PluginTask task = taskSource.loadTask(PluginTask.class);
-        BufferAllocator allocator = task.getBufferAllocator();
+        final TaskMapper taskMapper = CONFIG_MAPPER_FACTORY.createTaskMapper();
+        final PluginTask task = taskMapper.map(taskSource, PluginTask.class);
+        BufferAllocator allocator = Exec.getBufferAllocator();
+        // TODO: use Exec.getPageBuilder(bufferAllocator, schema, output) after embulk v0.10
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
 
         // Write your code here :)
@@ -253,13 +259,13 @@ public class AthenaInputPlugin implements InputPlugin
             }
         }
 
-        return Exec.newTaskReport();
+        return CONFIG_MAPPER_FACTORY.newTaskReport();
     }
 
     @Override
     public ConfigDiff guess(ConfigSource config)
     {
-        return Exec.newConfigDiff();
+        return CONFIG_MAPPER_FACTORY.newConfigDiff();
     }
 
     protected Connection getAthenaConnection(PluginTask task) throws ClassNotFoundException, SQLException
@@ -323,12 +329,37 @@ public class AthenaInputPlugin implements InputPlugin
     protected void addDriverJarToClasspath(String glob)
     {
         // TODO match glob
-        PluginClassLoader loader = (PluginClassLoader) getClass().getClassLoader();
+        final ClassLoader loader = getClass().getClassLoader();
+        if (!(loader instanceof URLClassLoader)) {
+            throw new RuntimeException("Plugin is not loaded by URLClassLoader unexpectedly.");
+        }
+        if (!"org.embulk.plugin.PluginClassLoader".equals(loader.getClass().getName())) {
+            throw new RuntimeException("Plugin is not loaded by PluginClassLoader unexpectedly.");
+        }
         Path path = Paths.get(glob);
         if (!path.toFile().exists()) {
-             throw new ConfigException("The specified driver jar doesn't exist: " + glob);
+            throw new ConfigException("The specified driver jar doesn't exist: " + glob);
         }
-        loader.addPath(Paths.get(glob));
+        final Method addPathMethod;
+        try {
+            addPathMethod = loader.getClass().getMethod("addPath", Path.class);
+        } catch (final NoSuchMethodException ex) {
+            throw new RuntimeException("Plugin is not loaded a ClassLoader which has addPath(Path), unexpectedly.");
+        }
+        try {
+            addPathMethod.invoke(loader, Paths.get(glob));
+        } catch (final IllegalAccessException ex) {
+            throw new RuntimeException(ex);
+        } catch (final InvocationTargetException ex) {
+            final Throwable targetException = ex.getTargetException();
+            if (targetException instanceof MalformedURLException) {
+                throw new IllegalArgumentException(targetException);
+            } else if (targetException instanceof RuntimeException) {
+                throw (RuntimeException) targetException;
+            } else {
+                throw new RuntimeException(targetException);
+            }
+        }
     }
 
     protected File findPluginRoot()
