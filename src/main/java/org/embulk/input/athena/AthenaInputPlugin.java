@@ -17,6 +17,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -105,10 +106,6 @@ public class AthenaInputPlugin implements InputPlugin
         @Config("column_options")
         @ConfigDefault("{}")
         public Map<String, JdbcColumnOption> getColumnOptions();
-
-        @Config("default_column_options")
-        @ConfigDefault("{}")
-        public Map<String, JdbcColumnOption> getDefaultColumnOptions();
     }
 
     @Override
@@ -321,7 +318,7 @@ public class AthenaInputPlugin implements InputPlugin
         final ArrayList<Column> columns = new ArrayList<>();
         for (int i = 0; i < querySchema.getCount(); i++) {
             JdbcColumn column = querySchema.getColumn(i);
-            JdbcColumnOption columnOption = columnOptionOf(task.getColumnOptions(), task.getDefaultColumnOptions(), column, factory.getJdbcType(column.getSqlType()));
+            JdbcColumnOption columnOption = columnOptionOf(task.getColumnOptions(), new HashMap<>(), column, factory.getJdbcType(column.getSqlType()));
             columns.add(new Column(i,
                     column.getName(),
                     factory.newColumnGetter(con, null, column, columnOption).getToType()));
