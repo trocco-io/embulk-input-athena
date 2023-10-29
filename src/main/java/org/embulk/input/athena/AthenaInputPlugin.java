@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.TimeZone;
 import java.time.ZoneId;
 
 import org.embulk.config.ConfigDiff;
@@ -50,13 +51,14 @@ import org.embulk.util.config.ConfigMapper;
 import org.embulk.util.config.ConfigMapperFactory;
 import org.embulk.util.config.Task;
 import org.embulk.util.config.TaskMapper;
+import org.embulk.util.config.modules.ZoneIdModule;
 import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
 
 public class AthenaInputPlugin implements InputPlugin
 {
     protected final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
-    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().addModule(ZoneIdModule.withLegacyNames()).build();
 
     protected static final ConfigMapper CONFIG_MAPPER = CONFIG_MAPPER_FACTORY.createConfigMapper();
 
@@ -130,7 +132,7 @@ public class AthenaInputPlugin implements InputPlugin
             if(columnOption.getTimeZone().isPresent())  {
                 throw new ConfigException("timezone option is not supported");
             }
-            if(columnOption.getValueType() != null){
+            if(!columnOption.getValueType().equals("coalesce")){
                 throw new ConfigException("value_type option is not supported");
             }
         }
@@ -330,7 +332,7 @@ public class AthenaInputPlugin implements InputPlugin
     private Schema getSchemaOfQuery(PluginTask task) throws SQLException, ClassNotFoundException {
         JdbcInputConnection con = new JdbcInputConnection(getAthenaConnection(task), null);
         JdbcSchema querySchema = con.getSchemaOfQuery(task.getQuery());
-        ColumnGetterFactory factory = newColumnGetterFactory(null, null);
+        ColumnGetterFactory factory = newColumnGetterFactory(null, TimeZone.getTimeZone("Z").toZoneId());
         final ArrayList<Column> columns = new ArrayList<>();
         for (int i = 0; i < querySchema.getCount(); i++) {
             JdbcColumn column = querySchema.getColumn(i);
