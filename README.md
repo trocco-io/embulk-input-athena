@@ -21,7 +21,10 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 * **access_key**: AWS access key (string, required)
 * **secret_key**: AWS secret key (string, required)
 * **query**: SQL to run (string, required)
-* **columns**: columns (string, required)
+* **columns**: columns (array, optional)
+* **column_options**: advanced: key-value pairs where key is a column name and value is options for the column.
+  - **type**: Column values are converted to this embulk type.
+  Available values options are: `boolean`, `long`, `double`, `string`, `json`, `timestamp`).
 * **options**: extra JDBC properties (string, default: {})
 * **null_to_zero**: if true, convert long, double and boolean value from null to zero (boolean, default: false)
 
