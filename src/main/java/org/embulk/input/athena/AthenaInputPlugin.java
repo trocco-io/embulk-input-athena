@@ -114,11 +114,27 @@ public class AthenaInputPlugin implements InputPlugin
         final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
         final PluginTask task = configMapper.map(config, PluginTask.class);
 
+        validateColumnOptions(task);
+
         Schema schema = getSchema(task);
         int taskCount = 1; // number of run() method calls
         return resume(task.toTaskSource(), schema, taskCount, control);
     }
 
+    private void validateColumnOptions(PluginTask task) {
+        for (Map.Entry<String, JdbcColumnOption> entry : task.getColumnOptions().entrySet()) {
+            JdbcColumnOption columnOption = entry.getValue();
+            if(columnOption.getTimestampFormat().isPresent()) {
+                throw new ConfigException("timestamp_format option is not supported");
+            }
+            if(columnOption.getTimeZone().isPresent())  {
+                throw new ConfigException("timezone option is not supported");
+            }
+            if(columnOption.getValueType() != null){
+                throw new ConfigException("value_type option is not supported");
+            }
+        }
+    }
     private Schema getSchema(PluginTask task) {
         SchemaConfig columns = task.getColumns();
         if (columns != null && columns.getColumnCount() > 0) {
