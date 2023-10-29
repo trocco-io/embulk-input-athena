@@ -54,12 +54,12 @@ import org.embulk.util.config.TaskMapper;
 import org.embulk.util.config.modules.ZoneIdModule;
 import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AthenaInputPlugin implements InputPlugin
 {
-    protected final Logger logger = org.slf4j.LoggerFactory.getLogger(getClass());
+    protected final Logger logger = LoggerFactory.getLogger(getClass());
     private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().addModule(ZoneIdModule.withLegacyNames()).build();
-
     protected static final ConfigMapper CONFIG_MAPPER = CONFIG_MAPPER_FACTORY.createConfigMapper();
 
     public interface PluginTask extends Task
