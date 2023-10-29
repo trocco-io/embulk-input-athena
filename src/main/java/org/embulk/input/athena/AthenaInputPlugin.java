@@ -20,13 +20,9 @@ import java.sql.Statement;
 import java.util.List;
 import java.util.Properties;
 
-import org.embulk.util.config.ConfigMapper;
-import org.embulk.util.config.Config;
-import org.embulk.util.config.ConfigDefault;
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
-import org.embulk.util.config.Task;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
 import org.embulk.input.jdbc.ToStringMap;
@@ -38,10 +34,14 @@ import org.embulk.spi.InputPlugin;
 import org.embulk.spi.PageBuilder;
 import org.embulk.spi.PageOutput;
 import org.embulk.spi.Schema;
-import org.embulk.util.config.units.SchemaConfig;
 import org.embulk.spi.time.Timestamp;
+import org.embulk.util.config.Config;
+import org.embulk.util.config.ConfigDefault;
+import org.embulk.util.config.ConfigMapper;
 import org.embulk.util.config.ConfigMapperFactory;
+import org.embulk.util.config.Task;
 import org.embulk.util.config.TaskMapper;
+import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
 
 public class AthenaInputPlugin implements InputPlugin
