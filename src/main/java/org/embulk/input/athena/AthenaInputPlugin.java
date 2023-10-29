@@ -120,6 +120,7 @@ public class AthenaInputPlugin implements InputPlugin
 
         Schema schema = getSchema(task);
         int taskCount = 1; // number of run() method calls
+
         return resume(task.toTaskSource(), schema, taskCount, control);
     }
 
@@ -137,6 +138,7 @@ public class AthenaInputPlugin implements InputPlugin
             }
         }
     }
+
     private Schema getSchema(PluginTask task) {
         SchemaConfig columns = task.getColumns();
         if (columns != null && columns.getColumnCount() > 0) {
@@ -343,6 +345,7 @@ public class AthenaInputPlugin implements InputPlugin
         }
         return new Schema(Collections.unmodifiableList(columns));
     }
+    
     private static JdbcColumnOption columnOptionOf(Map<String, JdbcColumnOption> columnOptions, Map<String, JdbcColumnOption> defaultColumnOptions, JdbcColumn targetColumn, String targetColumnSQLType)
     {
         JdbcColumnOption columnOption = columnOptions.get(targetColumn.getName());
