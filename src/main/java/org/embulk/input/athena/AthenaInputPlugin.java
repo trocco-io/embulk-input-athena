@@ -168,7 +168,7 @@ public class AthenaInputPlugin implements InputPlugin
     {
         final TaskMapper taskMapper = CONFIG_MAPPER_FACTORY.createTaskMapper();
         final PluginTask task = taskMapper.map(taskSource, PluginTask.class);
-        BufferAllocator allocator = Exec.getBufferAllocator();
+        final BufferAllocator allocator = Exec.getBufferAllocator();
         // TODO: use Exec.getPageBuilder(bufferAllocator, schema, output) after embulk v0.10
         PageBuilder pageBuilder = new PageBuilder(allocator, schema, output);
 
