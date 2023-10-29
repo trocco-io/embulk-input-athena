@@ -29,10 +29,10 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 dependencies {
-    compileOnly "org.embulk:embulk-api:0.10.36"
-    compileOnly "org.embulk:embulk-spi:0.10.36"
-
-    compile("org.embulk:embulk-util-config:0.3.2")
+    // version used in org.embulk:embulk-input-jdbc:0.12.2
+    compileOnly "org.embulk:embulk-api:0.10.31"
+    compileOnly "org.embulk:embulk-spi:0.10.31"
+    compile("org.embulk:embulk-util-config:0.3.0")
 
     // TODO: maven...
     compile files ('build/AthenaJDBC41.jar')
