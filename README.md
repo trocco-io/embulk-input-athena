@@ -23,6 +23,7 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 * **query**: SQL to run (string, required)
 * **columns**: columns. If these values are empty, they are taken from the table metadata and column_options.  (array, optional)
 * **column_options**: advanced: key-value pairs where key is a column name and value is options for the column, enabled if columns are empty. (array, optional)
+  - **value_type**: embulk get values from database as this value_type. Typically, the value_type determines `getXXX` method of `java.sql.PreparedStatement`.
   - **type**: Column values are converted to this embulk type. Available values options are: `boolean`, `long`, `double`, `string`, `json`, `timestamp`).
 * **options**: extra JDBC properties (string, default: {})
 * **null_to_zero**: if true, convert long, double and boolean value from null to zero (boolean, default: false)

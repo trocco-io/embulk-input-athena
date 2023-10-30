@@ -56,6 +56,8 @@ import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Locale.ENGLISH;
+
 public class AthenaInputPlugin implements InputPlugin
 {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
@@ -129,14 +131,8 @@ public class AthenaInputPlugin implements InputPlugin
 
         for (Map.Entry<String, JdbcColumnOption> entry : task.getColumnOptions().entrySet()) {
             JdbcColumnOption columnOption = entry.getValue();
-            if(columnOption.getTimestampFormat().isPresent()) {
-                throw new ConfigException("timestamp_format option is not supported");
-            }
             if(columnOption.getTimeZone().isPresent())  {
                 throw new ConfigException("timezone option is not supported");
-            }
-            if(!columnOption.getValueType().equals("coalesce")){
-                throw new ConfigException("value_type option is not supported");
             }
         }
     }
@@ -331,6 +327,30 @@ public class AthenaInputPlugin implements InputPlugin
         return DriverManager.getConnection(task.getAthenaUrl(), properties);
     }
 
+
+    private ColumnGetterFactory newColumnGetterFactory(PageBuilder pageBuilder, ZoneId dateTimeZone)
+    {
+        return new AthenaColumnGetterFactory(pageBuilder, dateTimeZone);
+    }
+
+    private static class AthenaColumnGetterFactory extends ColumnGetterFactory {
+        public AthenaColumnGetterFactory(PageBuilder to, ZoneId defaultTimeZone) {
+            super(to, defaultTimeZone);
+        }
+
+        @Override
+        protected String sqlTypeToValueType(JdbcColumn column, int sqlType) {
+            try {
+                return super.sqlTypeToValueType(column, sqlType);
+            } catch (UnsupportedOperationException e) {
+                throw new UnsupportedOperationException(
+                        String.format(ENGLISH,
+                                "Unsupported type %s (sqlType=%d) of '%s' column. Please add '%s: {value_type: string}' to 'column_options: {...}' option to convert the values to strings.",
+                                column.getTypeName(), column.getSqlType(), column.getName(), column.getName()));
+            }
+        }
+    }
+
     //
     // copy from embulk-input-jdbc
     //
@@ -375,11 +395,6 @@ public class AthenaInputPlugin implements InputPlugin
             return defaultColumnOption;
         }
         return CONFIG_MAPPER.map(CONFIG_MAPPER_FACTORY.newConfigSource(), JdbcColumnOption.class);
-    }
-
-    private ColumnGetterFactory newColumnGetterFactory(PageBuilder pageBuilder, ZoneId dateTimeZone)
-    {
-        return new ColumnGetterFactory(pageBuilder, dateTimeZone);
     }
 
     protected void loadDriver(String className, Optional<String> driverPath)
