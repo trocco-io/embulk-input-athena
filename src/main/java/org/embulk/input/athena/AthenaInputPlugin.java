@@ -116,8 +116,6 @@ public class AthenaInputPlugin implements InputPlugin
         final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
         final PluginTask task = configMapper.map(config, PluginTask.class);
 
-        validateColumnOptions(task);
-
         Schema schema = getSchema(task);
         int taskCount = 1; // number of run() method calls
 
@@ -125,6 +123,10 @@ public class AthenaInputPlugin implements InputPlugin
     }
 
     private void validateColumnOptions(PluginTask task) {
+        if(task.getColumnOptions() == null) {
+            return;
+        }
+
         for (Map.Entry<String, JdbcColumnOption> entry : task.getColumnOptions().entrySet()) {
             JdbcColumnOption columnOption = entry.getValue();
             if(columnOption.getTimestampFormat().isPresent()) {
@@ -144,6 +146,8 @@ public class AthenaInputPlugin implements InputPlugin
         if (columns != null && columns.getColumnCount() > 0) {
             return columns.toSchema();
         }
+
+        validateColumnOptions(task);
         try {
             return getSchemaOfQuery(task);
         } catch (SQLException | ClassNotFoundException e) {
