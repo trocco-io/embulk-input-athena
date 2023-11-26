@@ -57,8 +57,6 @@ import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.util.Locale.ENGLISH;
-
 public class AthenaInputPlugin implements InputPlugin
 {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
