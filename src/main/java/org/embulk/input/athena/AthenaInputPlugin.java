@@ -15,15 +15,27 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.TimeZone;
+import java.time.ZoneId;
 
 import org.embulk.config.ConfigDiff;
 import org.embulk.config.ConfigException;
 import org.embulk.config.ConfigSource;
 import org.embulk.config.TaskReport;
 import org.embulk.config.TaskSource;
+import org.embulk.input.athena.getter.AthenaColumnGetterFactory;
+import org.embulk.input.jdbc.getter.ColumnGetterFactory;
+import org.embulk.input.jdbc.JdbcColumn;
+import org.embulk.input.jdbc.JdbcColumnOption;
+import org.embulk.input.jdbc.JdbcInputConnection;
+import org.embulk.input.jdbc.JdbcSchema;
 import org.embulk.input.jdbc.ToStringMap;
 import org.embulk.spi.BufferAllocator;
 import org.embulk.spi.Column;
@@ -40,6 +52,7 @@ import org.embulk.util.config.ConfigMapper;
 import org.embulk.util.config.ConfigMapperFactory;
 import org.embulk.util.config.Task;
 import org.embulk.util.config.TaskMapper;
+import org.embulk.util.config.modules.ZoneIdModule;
 import org.embulk.util.config.units.SchemaConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +60,8 @@ import org.slf4j.LoggerFactory;
 public class AthenaInputPlugin implements InputPlugin
 {
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().build();
+    private static final ConfigMapperFactory CONFIG_MAPPER_FACTORY = ConfigMapperFactory.builder().addDefaultModules().addModule(ZoneIdModule.withLegacyNames()).build();
+    protected static final ConfigMapper CONFIG_MAPPER = CONFIG_MAPPER_FACTORY.createConfigMapper();
 
     public interface PluginTask extends Task
     {
@@ -81,6 +95,7 @@ public class AthenaInputPlugin implements InputPlugin
 
         // if you get schema from config
         @Config("columns")
+        @ConfigDefault("[]")
         public SchemaConfig getColumns();
 
         @Config("options")
@@ -91,6 +106,9 @@ public class AthenaInputPlugin implements InputPlugin
         @ConfigDefault("false")
         public boolean getNullToZero();
 
+        @Config("column_options")
+        @ConfigDefault("{}")
+        public Map<String, JdbcColumnOption> getColumnOptions();
     }
 
     @Override
@@ -99,10 +117,37 @@ public class AthenaInputPlugin implements InputPlugin
         final ConfigMapper configMapper = CONFIG_MAPPER_FACTORY.createConfigMapper();
         final PluginTask task = configMapper.map(config, PluginTask.class);
 
-        Schema schema = task.getColumns().toSchema();
+        Schema schema = getSchema(task);
         int taskCount = 1; // number of run() method calls
 
         return resume(task.toTaskSource(), schema, taskCount, control);
+    }
+
+    private void validateColumnOptions(PluginTask task) {
+        if(task.getColumnOptions() == null) {
+            return;
+        }
+
+        for (Map.Entry<String, JdbcColumnOption> entry : task.getColumnOptions().entrySet()) {
+            JdbcColumnOption columnOption = entry.getValue();
+            if(columnOption.getTimeZone().isPresent())  {
+                throw new ConfigException("timezone option is not supported");
+            }
+        }
+    }
+
+    private Schema getSchema(PluginTask task) {
+        SchemaConfig columns = task.getColumns();
+        if (columns != null && columns.getColumnCount() > 0) {
+            return columns.toSchema();
+        }
+
+        validateColumnOptions(task);
+        try {
+            return getSchemaOfQuery(task);
+        } catch (SQLException | ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
@@ -280,10 +325,57 @@ public class AthenaInputPlugin implements InputPlugin
 
         return DriverManager.getConnection(task.getAthenaUrl(), properties);
     }
+    
+    private ColumnGetterFactory newColumnGetterFactory(PageBuilder pageBuilder, ZoneId dateTimeZone)
+    {
+        return new AthenaColumnGetterFactory(pageBuilder, dateTimeZone);
+    }
 
     //
     // copy from embulk-input-jdbc
     //
+
+    private Schema getSchemaOfQuery(PluginTask task) throws SQLException, ClassNotFoundException {
+        JdbcInputConnection con = new JdbcInputConnection(getAthenaConnection(task), null);
+        JdbcSchema querySchema = con.getSchemaOfQuery(task.getQuery());
+        ColumnGetterFactory factory = newColumnGetterFactory(null, TimeZone.getTimeZone("Z").toZoneId());
+        final ArrayList<Column> columns = new ArrayList<>();
+        for (int i = 0; i < querySchema.getCount(); i++) {
+            JdbcColumn column = querySchema.getColumn(i);
+            JdbcColumnOption columnOption = columnOptionOf(task.getColumnOptions(), new HashMap<>(), column, factory.getJdbcType(column.getSqlType()));
+            columns.add(new Column(i,
+                    column.getName(),
+                    factory.newColumnGetter(con, null, column, columnOption).getToType()));
+        }
+        return new Schema(Collections.unmodifiableList(columns));
+    }
+    
+    private static JdbcColumnOption columnOptionOf(Map<String, JdbcColumnOption> columnOptions, Map<String, JdbcColumnOption> defaultColumnOptions, JdbcColumn targetColumn, String targetColumnSQLType)
+    {
+        JdbcColumnOption columnOption = columnOptions.get(targetColumn.getName());
+        if (columnOption == null) {
+            String foundName = null;
+            for (Map.Entry<String, JdbcColumnOption> entry : columnOptions.entrySet()) {
+                if (entry.getKey().equalsIgnoreCase(targetColumn.getName())) {
+                    if (columnOption != null) {
+                        throw new ConfigException(String.format("Cannot specify column '%s' because both '%s' and '%s' exist in column_options.",
+                                targetColumn.getName(), foundName, entry.getKey()));
+                    }
+                    foundName = entry.getKey();
+                    columnOption = entry.getValue();
+                }
+            }
+        }
+
+        if (columnOption != null) {
+            return columnOption;
+        }
+        final JdbcColumnOption defaultColumnOption = defaultColumnOptions.get(targetColumnSQLType);
+        if (defaultColumnOption != null) {
+            return defaultColumnOption;
+        }
+        return CONFIG_MAPPER.map(CONFIG_MAPPER_FACTORY.newConfigSource(), JdbcColumnOption.class);
+    }
 
     protected void loadDriver(String className, Optional<String> driverPath)
     {

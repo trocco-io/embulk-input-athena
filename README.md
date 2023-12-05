@@ -21,7 +21,10 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 * **access_key**: AWS access key (string, required)
 * **secret_key**: AWS secret key (string, required)
 * **query**: SQL to run (string, required)
-* **columns**: columns (string, required)
+* **columns**: columns. If these values are empty, they are taken from the table metadata and column_options.  (array, optional)
+* **column_options**: advanced: key-value pairs where key is a column name and value is options for the column, enabled if columns are empty. (array, optional)
+  - **value_type**: embulk get values from database as this value_type. Typically, the value_type determines `getXXX` method of `java.sql.PreparedStatement`.
+  - **type**: Column values are converted to this embulk type. Available values options are: `boolean`, `long`, `double`, `string`, `json`, `timestamp`).
 * **options**: extra JDBC properties (string, default: {})
 * **null_to_zero**: if true, convert long, double and boolean value from null to zero (boolean, default: false)
 
@@ -40,6 +43,21 @@ in:
   columns:
     - {name: uid, type: string}
     - {name: created_at, type: timestamp}
+  null_to_zero: true
+```
+
+```yaml
+in:
+  type: athena
+  database: log_test
+  athena_url: "jdbc:awsathena://athena.ap-northeast-1.amazonaws.com:443"
+  s3_staging_dir: "s3://aws-athena-query-results-11111111111-ap-northeast-1/"
+  access_key: ""
+  secret_key: ""
+  query: |
+    select uid, created_at from log_test.sample
+  column_options:
+    created_at: { type: string }
   null_to_zero: true
 ```
 
