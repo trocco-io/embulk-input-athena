@@ -1,6 +1,5 @@
 plugins {
     id "org.embulk.embulk-plugins" version "0.5.5"
-    id "com.jfrog.bintray" version "1.1"
     id "com.github.jruby-gradle.base" version "1.5.0"
     id "java"
     id "checkstyle"
@@ -36,8 +35,6 @@ dependencies {
 
     // TODO: maven...
     compile files ('build/AthenaJDBC41.jar')
-    compile group: 'com.amazonaws', name: 'aws-java-sdk', version: '1.11.301'
-    // compile group: 'com.amazonaws', name: 'aws-java-sdk-athena', version: '1.11.301'
     compile 'org.embulk:embulk-input-jdbc:0.12.2'
     testCompile "junit:junit:4.+"
 }
