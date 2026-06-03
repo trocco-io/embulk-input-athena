@@ -323,7 +323,12 @@ public class AthenaInputPlugin implements InputPlugin
         properties.put("Database", task.getDatabase());
         properties.putAll(task.getOptions());
 
-        return DriverManager.getConnection(task.getAthenaUrl(), properties);
+        String url = task.getAthenaUrl();
+        if (url.startsWith("jdbc:awsathena://")) {
+            url = "jdbc:athena://" + url.substring("jdbc:awsathena://".length());
+            logger.info("Converted deprecated URL prefix 'jdbc:awsathena://' to 'jdbc:athena://'");
+        }
+        return DriverManager.getConnection(url, properties);
     }
     
     private ColumnGetterFactory newColumnGetterFactory(PageBuilder pageBuilder, ZoneId dateTimeZone)
