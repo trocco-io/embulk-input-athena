@@ -328,6 +328,14 @@ public class AthenaInputPlugin implements InputPlugin
             url = "jdbc:athena://" + url.substring("jdbc:awsathena://".length());
             logger.info("Converted deprecated URL prefix 'jdbc:awsathena://' to 'jdbc:athena://'");
         }
+        if (!properties.containsKey("Region")) {
+            java.util.regex.Matcher m = java.util.regex.Pattern
+                    .compile("athena\\.([a-z0-9-]+)\\.amazonaws\\.com")
+                    .matcher(url);
+            if (m.find()) {
+                properties.put("Region", m.group(1));
+            }
+        }
         return DriverManager.getConnection(url, properties);
     }
     
