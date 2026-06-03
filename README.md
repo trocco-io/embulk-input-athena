@@ -14,7 +14,7 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 
 ## Configuration
 
-* **driver_path**: path to the jar file of the Athena JDBC driver. If not set, the bundled JDBC driver(AthenaJDBC41.jar) will be used. (string)
+* **driver_path**: path to the jar file of the Athena JDBC driver. If not set, the bundled JDBC driver(AthenaJDBC42-2.2.4.1000.jar) will be used. (string)
 * **database**: database name (string, required)
 * **athena_url**: Athena url (string, required)
 * **s3_staging_dir**: The S3 location to which your query output is written, for example s3://query-results-bucket/folder/. (string, required)
