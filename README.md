@@ -14,7 +14,7 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 
 ## Configuration
 
-* **driver_path**: path to the jar file of the Athena JDBC driver. If not set, the bundled JDBC driver(AthenaJDBC41.jar) will be used. (string)
+* **driver_path**: path to the jar file of the Athena JDBC driver. If not set, the bundled JDBC driver (athena-jdbc-3.7.0-with-dependencies.jar) will be used. (string)
 * **database**: database name (string, required)
 * **athena_url**: Athena url (string, required)
 * **s3_staging_dir**: The S3 location to which your query output is written, for example s3://query-results-bucket/folder/. (string, required)
@@ -34,7 +34,7 @@ Athena input plugin for Embulk loads records from Athena(AWS).
 in:
   type: athena
   database: log_test
-  athena_url: "jdbc:awsathena://athena.ap-northeast-1.amazonaws.com:443"
+  athena_url: "jdbc:athena://athena.ap-northeast-1.amazonaws.com:443"
   s3_staging_dir: "s3://aws-athena-query-results-11111111111-ap-northeast-1/"
   access_key: ""
   secret_key: ""
@@ -50,7 +50,7 @@ in:
 in:
   type: athena
   database: log_test
-  athena_url: "jdbc:awsathena://athena.ap-northeast-1.amazonaws.com:443"
+  athena_url: "jdbc:athena://athena.ap-northeast-1.amazonaws.com:443"
   s3_staging_dir: "s3://aws-athena-query-results-11111111111-ap-northeast-1/"
   access_key: ""
   secret_key: ""
